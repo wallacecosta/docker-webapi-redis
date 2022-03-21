@@ -1,20 +1,22 @@
 version: "3.4"
 
 services:  
-  redis:
+  db-redis:
     image: redis:6.2-alpine
     container_name: db-redis
     restart: always
     ports:
       - "6379:6379"
+    volumes:
+      - ../../database/redis-volume:/data
 
-  web:
-    container_name: webapi
+  web-api:
+    container_name: web-api
     build: Api/.
     ports:
-      - "5000:80"
-    links:
-      - redis
+      - "5555:80"
+    depends_on:
+      - db-redis
     restart: always  
 
 volumes:
