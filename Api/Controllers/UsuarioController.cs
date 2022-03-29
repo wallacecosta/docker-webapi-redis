@@ -16,17 +16,17 @@ public class UsuarioController : ControllerBase
     }
 
     [HttpPost]
-    public ActionResult <Usuario> Create(Usuario usuario)
+    public IActionResult Create(Usuario usuario)
     {
         _usuarioRepository.Create(usuario);
 
-        return CreatedAtRoute(nameof(GetById), new {Id = usuario.Id}, usuario);
+        return CreatedAtRoute(nameof(GetByCpf), new {Cpf = usuario.Cpf}, usuario);
     }
 
-    [HttpGet("{id}", Name="GetById")]
-    public ActionResult<IEnumerable<Usuario>> GetById(string id)
+    [HttpGet("{cpf}", Name="GetByCpf")]
+    public IActionResult GetByCpf(string cpf)
     {
-        var usuario = _usuarioRepository.GetById(id);
+        var usuario = _usuarioRepository.GetByCpf(cpf);
 
         if (usuario != null) return Ok(usuario);
 
@@ -34,12 +34,11 @@ public class UsuarioController : ControllerBase
 
     }
 
-    [HttpGet]
-    public ActionResult<IEnumerable<Usuario>> GetAll()
+    [HttpDelete("{cpf}", Name = "DeleteCpf" )]
+    public IActionResult DeleteCpf(string cpf)
     {
-        var usuarioList = _usuarioRepository.GetAll();
+        _usuarioRepository.Delete(cpf);
 
-        return Ok(usuarioList);
+        return NoContent();
     }
-
 }

@@ -1,14 +1,15 @@
+using System.Text;
 using System.Text.Json;
 using Api.Models;
-using StackExchange.Redis;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Api.Data;
 
 public class UsuarioRepository : IUsuarioRepository
 {
-    private readonly IConnectionMultiplexer _redis;
+    private readonly IDistributedCache _redis;
 
-    public UsuarioRepository(IConnectionMultiplexer redis)
+    public UsuarioRepository(IDistributedCache redis)
     {
         _redis = redis;
     }
@@ -17,36 +18,26 @@ public class UsuarioRepository : IUsuarioRepository
     {
         if (usuario == null) throw new NotImplementedException();
 
-        var db = _redis.GetDatabase();
-        db.HashSet($"Usuarios", new HashEntry[]{new HashEntry(usuario.Id, JsonSerializer.Serialize(usuario))});
+        var usuarioJson = JsonSerializer.Serialize<Usuario>(usuario);
+        var usuarioByte = Encoding.UTF8.GetBytes(usuarioJson);
+        var options = new DistributedCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromMinutes(1));
+
+        _redis.Set(usuario.Cpf, usuarioByte, options);
     }
 
-    public Usuario? GetById(string id)
+    public Usuario? GetByCpf(string cpf)
     {        
-        var db = _redis.GetDatabase();
-        var usuarioDB = db.HashGet("Usuarios", id);
+        var usuarioByte = _redis.Get(cpf);
 
-        return string.IsNullOrEmpty(usuarioDB) ? null : JsonSerializer.Deserialize<Usuario>(usuarioDB);
+        if (usuarioByte is null) return null;
+
+        var usuario = JsonSerializer.Deserialize<Usuario>(usuarioByte);
+
+        return  usuario;
     }
 
-    public IEnumerable<Usuario?>? GetAll()
-    {
-        var db = _redis.GetDatabase();
-        var usuarioList = db.HashGetAll("Usuarios");
-        
-        return usuarioList.Any() 
-                ? Array.ConvertAll(usuarioList, usuario => JsonSerializer.Deserialize<Usuario>(usuario.Value)).ToList()
-                : null;
-    }
-
-    public Usuario? Update(Usuario usuario)
-    {
-        throw new NotImplementedException();
-    }
-
-    public bool Delete(string id)
-    {
-        throw new NotImplementedException();
-    }
+    public void Delete(string cpf)
+        => _redis.Remove(cpf);
     
 }
