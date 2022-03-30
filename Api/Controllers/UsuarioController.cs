@@ -1,43 +1,51 @@
-using Api.Data;
+using System.Text;
+using System.Text.Json;
 using Api.Models;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Caching.Distributed;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("[controller]")]
-public class UsuarioController : ControllerBase
+public class UsuariosController : ControllerBase
 {
-    private readonly IUsuarioRepository _usuarioRepository;
+    private readonly IDistributedCache _cache;
 
-    public UsuarioController(IUsuarioRepository usuarioRepository)
+    public UsuariosController(IDistributedCache cache)
     {
-        _usuarioRepository = usuarioRepository;
+        _cache = cache;
     }
 
     [HttpPost]
-    public IActionResult Create(Usuario usuario)
+    public async Task<IActionResult> Create(Usuario usuario)
     {
-        _usuarioRepository.Create(usuario);
+        if (usuario == null) throw new NotImplementedException();
 
-        return CreatedAtRoute(nameof(GetByCpf), new {Cpf = usuario.Cpf}, usuario);
+        var usuarioByte = Encoding.UTF8.GetBytes(JsonSerializer.Serialize<Usuario>(usuario));
+        var options = new DistributedCacheEntryOptions()
+                .SetSlidingExpiration(TimeSpan.FromMinutes(1));
+
+        await _cache.SetAsync(usuario.Cpf, usuarioByte, options);
+
+        return CreatedAtAction(nameof(GetByCpf), new {Cpf = usuario.Cpf}, usuario);
     }
 
     [HttpGet("{cpf}", Name="GetByCpf")]
-    public IActionResult GetByCpf(string cpf)
+    public async Task<IActionResult> GetByCpf(string cpf)
     {
-        var usuario = _usuarioRepository.GetByCpf(cpf);
+        var usuarioByte = await _cache.GetAsync(cpf);
 
-        if (usuario != null) return Ok(usuario);
+        if (usuarioByte is null) return NotFound();
 
-        return NotFound();
+        return Ok(JsonSerializer.Deserialize<Usuario>(usuarioByte));
 
     }
 
     [HttpDelete("{cpf}", Name = "DeleteCpf" )]
-    public IActionResult DeleteCpf(string cpf)
+    public async Task<IActionResult> DeleteCpf(string cpf)
     {
-        _usuarioRepository.Delete(cpf);
+        await _cache.RemoveAsync(cpf);
 
         return NoContent();
     }

@@ -1,5 +1,3 @@
-using Api.Data;
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddStackExchangeRedisCache(options =>
@@ -8,7 +6,6 @@ builder.Services.AddStackExchangeRedisCache(options =>
     options.InstanceName = "UsuarioCacheDB";
 });
 
-builder.Services.AddScoped<IUsuarioRepository, UsuarioRepository>();
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
